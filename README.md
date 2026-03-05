@@ -1,19 +1,21 @@
-# Defuddle Worker
+# Defuddle
 
 A Cloudflare Worker that extracts the main content of any web page and returns clean Markdown. Built on top of [Defuddle](https://github.com/kepano/defuddle) with special handling for **X/Twitter** posts, including text, media, polls, quotes, and long-form Articles.
 
-**🔗 Live demo:** [defuddle-worker.thieunv.workers.dev](https://defuddle-worker.thieunv.workers.dev/)
+![Defuddle — Live Demo](assets/cover.png)
+
+**🔗 Live demo:** [defuddle.thieunv.workers.dev](https://defuddle.thieunv.workers.dev/)
 
 **Examples:**
 ```bash
 # Regular web page
-https://defuddle-worker.thieunv.workers.dev/vividkit.dev
+https://defuddle.thieunv.workers.dev/vividkit.dev
 
 # X/Twitter post
-https://defuddle-worker.thieunv.workers.dev/x.com/thieunguyen_it/status/2021461660310044828
+https://defuddle.thieunv.workers.dev/x.com/thieunguyen_it/status/2021461660310044828
 
 # X Article (long-form with multiple mediums)
-https://defuddle-worker.thieunv.workers.dev/x.com/trq212/status/2024574133011673516
+https://defuddle.thieunv.workers.dev/x.com/trq212/status/2024574133011673516
 ```
 
 ## Features
@@ -59,7 +61,7 @@ curl -H 'Accept: application/json' https://<your-worker>.workers.dev/x.com/thieu
 ```bash
 # Clone the repo
 git clone <repo-url>
-cd defuddle-worker
+cd defuddle
 
 # Install dependencies
 npm install
@@ -105,12 +107,12 @@ npm test
 3. **Verify**
 
    ```bash
-   curl https://defuddle-worker.<your-subdomain>.workers.dev/example.com
+   curl https://defuddle.<your-subdomain>.workers.dev/example.com
    ```
 
 ### Custom domain (optional)
 
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) → Workers & Pages → `defuddle-worker` → Settings → Domains & Routes
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) → Workers & Pages → `defuddle` → Settings → Domains & Routes
 2. Add a custom domain (must be on Cloudflare DNS) or a route pattern
 
 ### Configuration
@@ -119,7 +121,7 @@ The worker config is in [`wrangler.jsonc`](./wrangler.jsonc):
 
 ```jsonc
 {
-  "name": "defuddle-worker",        // Worker name (= subdomain)
+  "name": "defuddle",        // Worker name (= subdomain)
   "main": "src/index.ts",           // Entry point
   "compatibility_date": "2026-03-01",
   "compatibility_flags": ["nodejs_compat"]  // Required for linkedom

@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Defuddle Worker</title>
+  <meta name="description"
+    content="Convert any URL to clean, structured Markdown. Powered by Cloudflare Workers. Supports web pages, X/Twitter posts, and more.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-deep: #0f172a;
+      --bg-surface: rgba(30, 41, 59, 0.6);
+      --bg-surface-hover: rgba(51, 65, 85, 0.7);
+      --border-glass: rgba(148, 163, 184, 0.15);
+      --border-glass-hover: rgba(148, 163, 184, 0.35);
+      --color-primary: #3b82f6;
+      --color-accent: #60a5fa;
+      --color-violet: #8b5cf6;
+      --color-cyan: #06b6d4;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --color-success: #10b981;
+      --color-amber: #f59e0b;
+      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+      --blur: blur(16px);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(6, 182, 212, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(139, 92, 246, 0.05), transparent),
+        radial-gradient(ellipse 50% 50% at 20% 80%, rgba(59, 130, 246, 0.04), transparent);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ─── Ambient Background ──────────────────────────────────── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(to right, rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+
+    /* ─── Layout ──────────────────────────────────────────────── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── Nav ─────────────────────────────────────────────────── */
+    nav {
+      padding: 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: -0.04em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-text {
+      background: linear-gradient(135deg, #ffffff 30%, var(--color-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(6, 182, 212, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), inset 0 0 12px rgba(6, 182, 212, 0.08);
+      animation: logo-glow 3s ease-in-out infinite;
+    }
+
+    .logo-icon svg {
+      filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.5));
+    }
+
+    @keyframes logo-glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), inset 0 0 12px rgba(6, 182, 212, 0.08);
+      }
+
+      50% {
+        box-shadow: 0 0 30px rgba(6, 182, 212, 0.25), inset 0 0 16px rgba(6, 182, 212, 0.12);
+      }
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-link {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+
+    .nav-badge {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-badge:hover {
+      border-color: var(--border-glass-hover);
+      color: var(--text-primary);
+      box-shadow: 0 0 16px rgba(148, 163, 184, 0.1);
+    }
+
+    /* ─── Hero ────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 0 40px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--color-success);
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+      }
+
+      50% {
+        opacity: 0.8;
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+      }
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 4.5rem);
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      color: #ffffff;
+    }
+
+    .accent-orange {
+      color: #f6821f;
+    }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+    }
+
+    /* ─── Converter Card ──────────────────────────────────────── */
+    .converter-card {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding: 6px;
+      max-width: 720px;
+      margin: 0 auto;
+      transition: all 0.3s;
+    }
+
+    .converter-card:focus-within {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .converter-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .url-input {
+      flex: 1;
+      padding: 16px 20px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      min-width: 0;
+    }
+
+    .url-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .convert-btn {
+      padding: 14px 32px;
+      background: var(--text-primary);
+      border: 1px solid var(--text-primary);
+      border-radius: var(--radius-sm);
+      color: #020617;
+      /* Very deep slate for high contrast */
+      font-family: var(--font-ui);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    }
+
+    .convert-btn:hover {
+      transform: translateY(-2px);
+      background: #ffffff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .convert-btn:active {
+      transform: translateY(0);
+    }
+
+    .convert-btn.loading {
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    .convert-btn.loading .btn-text {
+      visibility: hidden;
+    }
+
+    .convert-btn .spinner {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .convert-btn.loading .spinner {
+      display: flex;
+    }
+
+    .spinner::after {
+      content: '';
+      width: 20px;
+      height: 20px;
+      border: 2px solid currentColor;
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ─── Shortcut Hint ───────────────────────────────────────── */
+    .shortcut-hint {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .shortcut-code {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .shortcut-code span {
+      color: var(--color-cyan);
+    }
+
+    .shortcut-label {
+      display: block;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── Stats ───────────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 48px auto 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: 100px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      transition: all 0.25s;
+    }
+
+    .stat-pill:hover {
+      border-color: var(--border-glass-hover);
+      transform: translateY(-2px);
+    }
+
+    .stat-value {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .stat-icon {
+      font-size: 1rem;
+    }
+
+    /* ─── Result Area ─────────────────────────────────────────── */
+    .result-section {
+      margin-top: 40px;
+      display: none;
+      text-align: left;
+    }
+
+    .result-section.visible {
+      display: block;
+      animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .result-header {
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      border-bottom: none;
+      padding: 16px 20px 0;
+    }
+
+    .result-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+    }
+
+    .result-source {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .result-favicon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: var(--bg-surface-hover);
+      object-fit: contain;
+    }
+
+    .result-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--color-violet);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      white-space: nowrap;
+    }
+
+    .result-badge.domain {
+      background: rgba(6, 182, 212, 0.1);
+      color: var(--color-cyan);
+      border-color: rgba(6, 182, 212, 0.15);
+    }
+
+    .result-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-glass);
+      margin: 0 -20px;
+      padding: 0 20px;
+    }
+
+    .result-tabs {
+      display: flex;
+      gap: 0;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      position: relative;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .tab-btn.active {
+      color: var(--color-indigo);
+      border-bottom-color: var(--color-indigo);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .action-btn {
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-glass);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .action-btn:hover {
+      border-color: var(--border-glass-hover);
+      color: var(--text-primary);
+    }
+
+    .action-btn.copied {
+      border-color: var(--color-success);
+      color: var(--color-success);
+    }
+
+    .result-box {
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-top: none;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .result-content {
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      max-height: 500px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .result-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .result-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .result-content::-webkit-scrollbar-thumb {
+      background: var(--border-glass-hover);
+      border-radius: 3px;
+    }
+
+    /* Rendered markdown preview */
+    .result-preview {
+      padding: 24px;
+      max-height: 500px;
+      overflow-y: auto;
+      display: none;
+      line-height: 1.8;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+
+    .result-preview h1 {
+      font-size: 1.5rem;
+      margin: 16px 0 8px;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .result-preview h2 {
+      font-size: 1.25rem;
+      margin: 14px 0 6px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .result-preview h3 {
+      font-size: 1.1rem;
+      margin: 12px 0 4px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .result-preview p {
+      margin: 8px 0;
+      color: var(--text-secondary);
+    }
+
+    .result-preview a {
+      color: var(--color-cyan);
+      text-decoration: none;
+    }
+
+    .result-preview a:hover {
+      text-decoration: underline;
+    }
+
+    .result-preview code {
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    .result-preview pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    .result-preview pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .result-preview blockquote {
+      border-left: 3px solid var(--color-violet);
+      padding-left: 16px;
+      margin: 12px 0;
+      color: var(--text-muted);
+    }
+
+    .result-preview img {
+      max-width: 100%;
+      border-radius: var(--radius-sm);
+      margin: 8px 0;
+    }
+
+    .result-preview ul,
+    .result-preview ol {
+      padding-left: 24px;
+      margin: 8px 0;
+    }
+
+    .result-preview li {
+      margin: 4px 0;
+      color: var(--text-secondary);
+    }
+
+    .result-preview hr {
+      border: none;
+      border-top: 1px solid var(--border-glass);
+      margin: 16px 0;
+    }
+
+    .result-preview::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .result-preview::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .result-preview::-webkit-scrollbar-thumb {
+      background: var(--border-glass-hover);
+      border-radius: 3px;
+    }
+
+    /* ─── Error ────────────────────────────────────────────────── */
+    .error-box {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      color: #fca5a5;
+      font-size: 0.9rem;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .error-box.visible {
+      display: block;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    /* ─── Divider ──────────────────────────────────────────────── */
+    .section-divider {
+      max-width: 1100px;
+      margin: 80px auto;
+      border: none;
+      border-top: 1px solid var(--border-glass);
+    }
+
+    /* ─── Features ────────────────────────────────────────────── */
+    .features {
+      padding: 0 0 40px;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--color-cyan);
+      margin-bottom: 20px;
+      font-family: var(--font-mono);
+      padding: 6px 16px;
+      background: rgba(6, 182, 212, 0.05);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      border-radius: 100px;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.1) inset;
+    }
+
+    .section-label::before,
+    .section-label::after {
+      content: '//';
+      color: rgba(6, 182, 212, 0.5);
+      font-weight: 400;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 0;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ─── How It Works ────────────────────────────────────────── */
+    .how-it-works {
+      padding: 0 0 40px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      position: relative;
+      text-align: left;
+    }
+
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border-glass);
+      z-index: 0;
+    }
+
+    .step {
+      position: relative;
+      padding-top: 32px;
+    }
+
+    .step-number {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: var(--bg-deep);
+      padding-right: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      z-index: 1;
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ─── API Section ─────────────────────────────────────────── */
+    .api-section {
+      padding: 0 0 40px;
+    }
+
+    .api-card {
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .api-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    .api-tab {
+      padding: 12px 24px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: var(--font-ui);
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .api-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--color-indigo);
+    }
+
+    .api-tab:hover {
+      color: var(--text-secondary);
+    }
+
+    .api-code {
+      position: relative;
+    }
+
+    .api-code pre {
+      margin: 0 !important;
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: rgba(15, 23, 42, 0.4) !important;
+      padding: 24px !important;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    .api-code code {
+      font-family: var(--font-mono) !important;
+      font-size: 0.9rem !important;
+      line-height: 1.6 !important;
+      text-shadow: none !important;
+    }
+
+    .api-copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-glass);
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .api-copy-btn:hover {
+      color: var(--text-secondary);
+      border-color: var(--border-glass-hover);
+    }
+
+    .api-copy-btn.copied {
+      color: var(--color-success);
+      border-color: var(--color-success);
+    }
+
+
+
+    /* ─── Footer ──────────────────────────────────────────────── */
+    footer {
+      padding: 40px 0;
+      text-align: center;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-secondary);
+    }
+
+    .footer-powered {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-powered a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .footer-powered a:hover {
+      color: var(--text-primary);
+    }
+
+    /* ─── Scroll Reveal ───────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero {
+        padding: 48px 0 24px;
+      }
+
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .steps::before {
+        display: none;
+      }
+
+      .converter-inner {
+        flex-direction: column;
+      }
+
+      .convert-btn {
+        width: 100%;
+      }
+
+      .url-input {
+        text-align: center;
+      }
+
+      .nav-links .nav-link {
+        display: none;
+      }
+
+      .stats {
+        gap: 8px;
+      }
+
+      .stat-pill {
+        padding: 8px 14px;
+        font-size: 0.8rem;
+      }
+
+      .result-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-badge {
+        font-size: 0.75rem;
+      }
+
+      .stats {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* ─── Reduced Motion ──────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+
+      .logo-icon {
+        animation: none;
+      }
+
+      .hero-badge-dot {
+        animation: none;
+      }
+
+      .reveal {
+        transition: none;
+        opacity: 1;
+        transform: none;
+      }
+
+      .spinner::after {
+        animation-duration: 1.5s;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background Grid -->
+  <div class="bg-grid"></div>
+
+  <!-- Navigation -->
+  <div class="container">
+    <nav>
+      <a href="/" class="logo">
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logoGrad)" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <defs>
+              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+            </defs>
+            <path
+              d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+          </svg>
+        </div>
+        <span class="logo-text">defuddle</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#api" class="nav-link">API</a>
+        <a href="https://github.com/thieung/defuddle-worker" target="_blank" class="nav-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>
+        Defuddle <span class="accent-orange">the Web</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Paste any URL and get clean, structured Markdown instantly. Web pages, X/Twitter posts, articles - we extract
+        the content that matters.
+      </p>
+
+      <!-- Converter -->
+      <div class="converter-card" id="converter">
+        <div class="converter-inner">
+          <input type="url" class="url-input" id="urlInput" placeholder="https://example.com/any-page"
+            autocomplete="off" spellcheck="false">
+          <button class="convert-btn" id="convertBtn" type="button">
+            <span class="btn-text">Convert</span>
+            <span class="spinner"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Shortcut -->
+      <div class="shortcut-hint">
+        <div class="shortcut-code">
+          <span>defuddle.thieunv.workers.dev/</span>any-url-here
+        </div>
+        <span class="shortcut-label">Prepend the worker URL to any link for instant conversion</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-pill">
+          <span class="stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="var(--color-amber)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg></span>
+          <span class="stat-value">~0.3s</span>
+          avg response
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 9H8" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
+            </svg></span>
+          <span class="stat-value">80%</span>
+          fewer tokens
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="var(--color-success)">
+              <path
+                d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg></span>
+          X/Twitter
+          <span style="color: var(--color-success)">supported</span>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-section" id="resultSection">
+        <div class="result-header">
+          <div class="result-header-top">
+            <div class="result-source">
+              <img class="result-favicon" id="resultFavicon" src="" alt="" onerror="this.style.display='none'">
+              <span class="result-title" id="resultTitle">Result</span>
+            </div>
+            <div class="result-badges">
+              <span class="result-badge domain" id="resultDomain"></span>
+              <span class="result-badge" id="resultWords"></span>
+            </div>
+          </div>
+          <div class="result-toolbar">
+            <div class="result-tabs">
+              <button class="tab-btn active" id="rawBtn" type="button">Raw</button>
+              <button class="tab-btn" id="previewBtn" type="button">Preview</button>
+            </div>
+            <div class="result-actions">
+              <button class="action-btn" id="copyBtn" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="result-box">
+          <div class="result-content" id="resultContent"></div>
+          <div class="result-preview" id="resultPreview"></div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-box" id="errorBox"></div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Features -->
+  <section class="features reveal" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Capabilities</div>
+        <h2 class="section-title">Everything you need to extract content</h2>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+              <path d="M2 12h20" />
+            </svg></div>
+          <h3>Web Pages</h3>
+          <p>Any public URL converted to clean Markdown. We strip ads, navigation, footers - leaving just the content
+            you need.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+            </svg></div>
+          <h3>X/Twitter Posts</h3>
+          <p>Full tweet extraction including media, polls, quotes, threads, and X Articles with DraftJS-to-Markdown
+            conversion.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg></div>
+          <h3>API-First</h3>
+          <p>Simple REST API. Append any URL to the worker path or use the JSON endpoint for programmatic access.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- How It Works -->
+  <section class="how-it-works reveal" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">How It Works</div>
+        <h2 class="section-title">Three steps to clean Markdown</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">01</div>
+          <h3>Paste URL</h3>
+          <p>Enter any web page URL or X/Twitter post link in the input field above.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">02</div>
+          <h3>We Extract</h3>
+          <p>Defuddle parses the page, strips clutter, and extracts the main content using smart heuristics.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">03</div>
+          <h3>Get Markdown</h3>
+          <p>Receive clean, structured Markdown ready for LLMs, documentation, or any downstream use.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- API Usage -->
+  <section class="api-section reveal" id="api">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Developer API</div>
+        <h2 class="section-title">Simple and powerful</h2>
+      </div>
+
+      <div class="api-card">
+        <div class="api-tabs">
+          <button class="api-tab active" data-tab="curl">cURL</button>
+          <button class="api-tab" data-tab="js">JavaScript</button>
+          <button class="api-tab" data-tab="python">Python</button>
+        </div>
+        <div class="api-code">
+          <button class="api-copy-btn" id="apiCopyBtn" type="button">Copy</button>
+          <pre><code id="apiCodeBlock" class="language-bash"></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#api">API</a>
+        <a href="https://github.com/thieung/defuddle-worker" target="_blank">GitHub</a>
+      </div>
+      <p class="footer-powered">
+        Built with <a href="https://github.com/kepano/defuddle" target="_blank">Defuddle</a> · Powered by <a
+          href="https://workers.cloudflare.com" target="_blank">Cloudflare Workers</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // ─── DOM Elements ───────────────────────────────────────────
+    const urlInput = document.getElementById('urlInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const resultSection = document.getElementById('resultSection');
+    const resultContent = document.getElementById('resultContent');
+    const resultPreview = document.getElementById('resultPreview');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultFavicon = document.getElementById('resultFavicon');
+    const resultDomain = document.getElementById('resultDomain');
+    const resultWords = document.getElementById('resultWords');
+    const errorBox = document.getElementById('errorBox');
+    const copyBtn = document.getElementById('copyBtn');
+    const rawBtn = document.getElementById('rawBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const apiCopyBtn = document.getElementById('apiCopyBtn');
+    const apiCodeBlock = document.getElementById('apiCodeBlock');
+
+    let currentMarkdown = '';
+
+    // ─── Convert ────────────────────────────────────────────────
+    async function convert() {
+      const url = urlInput.value.trim();
+      if (!url) { urlInput.focus(); return; }
+
+      // Normalize URL
+      let targetUrl = url;
+      if (!targetUrl.match(/^https?:\/\//)) {
+        targetUrl = 'https://' + targetUrl;
+      }
+
+      // Reset UI
+      errorBox.classList.remove('visible');
+      resultSection.classList.remove('visible');
+      convertBtn.classList.add('loading');
+
+      try {
+        const response = await fetch(`/api/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: targetUrl })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `Error: ${response.status}`);
+        }
+
+        currentMarkdown = data.content || '';
+        const wordCount = data.wordCount || 0;
+        const domain = data.domain || '';
+
+        // Populate header
+        resultTitle.textContent = data.title || 'Untitled';
+        resultDomain.textContent = domain;
+        resultWords.textContent = `${wordCount.toLocaleString()} words`;
+
+        // Favicon
+        if (domain) {
+          resultFavicon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+          resultFavicon.style.display = 'block';
+        } else {
+          resultFavicon.style.display = 'none';
+        }
+
+        resultContent.textContent = currentMarkdown;
+
+        // Simple markdown-to-HTML for preview (basic rendering)
+        resultPreview.innerHTML = marked.parse(currentMarkdown);
+
+        // Show raw view by default
+        showRaw();
+        resultSection.classList.add('visible');
+
+        // Scroll to result
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.add('visible');
+      } finally {
+        convertBtn.classList.remove('loading');
+      }
+    }
+
+    // ─── View Toggle ────────────────────────────────────────────
+    function showRaw() {
+      resultContent.style.display = 'block';
+      resultPreview.style.display = 'none';
+      rawBtn.classList.add('active');
+      previewBtn.classList.remove('active');
+    }
+
+    function showPreview() {
+      resultContent.style.display = 'none';
+      resultPreview.style.display = 'block';
+      previewBtn.classList.add('active');
+      rawBtn.classList.remove('active');
+    }
+
+    // ─── Markdown Preview (using marked.js) ───────────────────────
+
+    // ─── Copy ───────────────────────────────────────────────────
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const origText = btn.innerHTML;
+        btn.classList.add('copied');
+        const svgPart = btn.querySelector('svg') ? btn.querySelector('svg').outerHTML + ' ' : '';
+        btn.innerHTML = svgPart + 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = origText;
+        }, 2000);
+      });
+    }
+
+    // ─── API Tabs ───────────────────────────────────────────────
+    const apiPlainText = {
+      curl: `# Get Markdown directly
+curl https://defuddle.thieunv.workers.dev/example.com
+
+# Get JSON response
+curl -H "Accept: application/json" \\
+     https://defuddle.thieunv.workers.dev/example.com
+
+# Convert an X/Twitter post
+curl https://defuddle.thieunv.workers.dev/x.com/user/status/123`,
+
+      js: `// Fetch as Markdown
+const response = await fetch(
+  'https://defuddle.thieunv.workers.dev/example.com'
+);
+const markdown = await response.text();
+
+// Fetch as JSON
+const json = await fetch(
+  'https://defuddle.thieunv.workers.dev/example.com',
+  { headers: { Accept: 'application/json' } }
+).then(r => r.json());`,
+
+      python: `import requests
+
+# Get Markdown
+response = requests.get(
+    "https://defuddle.thieunv.workers.dev/example.com"
+)
+markdown = response.text
+
+# Get JSON
+response = requests.get(
+    "https://defuddle.thieunv.workers.dev/example.com",
+    headers={"Accept": "application/json"}
+)
+data = response.json()`
+    };
+
+    let currentTab = 'curl';
+
+    function updateApiCode() {
+      apiCodeBlock.className = 'language-' + (currentTab === 'curl' ? 'bash' : currentTab === 'js' ? 'javascript' : 'python');
+      apiCodeBlock.textContent = apiPlainText[currentTab];
+      if (window.Prism) {
+        Prism.highlightElement(apiCodeBlock);
+      }
+    }
+
+    document.querySelectorAll('.api-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.api-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        updateApiCode();
+      });
+    });
+
+    // Initialize formatting
+    updateApiCode();
+
+    // ─── Event Listeners ────────────────────────────────────────
+    convertBtn.addEventListener('click', convert);
+    urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') convert(); });
+    copyBtn.addEventListener('click', () => copyToClipboard(currentMarkdown, copyBtn));
+    rawBtn.addEventListener('click', showRaw);
+    previewBtn.addEventListener('click', showPreview);
+    apiCopyBtn.addEventListener('click', () => copyToClipboard(apiPlainText[currentTab], apiCopyBtn));
+
+    // ─── Scroll Reveal ──────────────────────────────────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+</body>
+
+</html>
