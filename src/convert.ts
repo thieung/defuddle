@@ -748,12 +748,17 @@ async function fetchTweetData(url: string): Promise<ConvertResult> {
 
 // ─── Regular Web Page Parser ────────────────────────────────────────────────
 
-async function fetchAndParse(targetUrl: string): Promise<ConvertResult> {
+async function fetchAndParse(targetUrl: string, cookies?: string): Promise<ConvertResult> {
+    const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    };
+    if (cookies) {
+        headers['Cookie'] = cookies;
+    }
+
     const response = await fetch(targetUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; DefuddleWorker/1.0)',
-            'Accept': 'text/html,application/xhtml+xml',
-        },
+        headers,
         redirect: 'follow',
     });
 
@@ -794,7 +799,90 @@ async function fetchAndParse(targetUrl: string): Promise<ConvertResult> {
     const turndown = new TurndownService({
         headingStyle: 'atx',
         codeBlockStyle: 'fenced',
+        bulletListMarker: '-',
+        hr: '---',
     });
+
+    // Override Turndown's default escape to avoid adding backslashes before
+    // hyphens at the start of lines. The default escapes include /^-/g → '\-'
+    // which corrupts output like "- list item" into "\- list item".
+    const defaultEscape = turndown.escape.bind(turndown);
+    turndown.escape = function (str: string) {
+        const escaped = defaultEscape(str);
+        // Remove the backslash that Turndown adds before leading hyphens
+        return escaped.replace(/^\\-/gm, '-');
+    };
+
+    // Override list item rule to collapse "loose lists" (li > p) into "tight lists".
+    // Many CMSes (Substack, WordPress, etc.) wrap <li> content in <p> tags, causing
+    // Turndown to produce double-spaced list items. This strips the extra newlines.
+    turndown.addRule('tightListItem', {
+        filter: 'li',
+        replacement: function (content: string, node: any, options: any) {
+            // Strip leading/trailing newlines and collapse multiple newlines
+            // added by inner <p> blocks into single newlines (tight list)
+            content = content
+                .replace(/^\n+/, '')
+                .replace(/\n+$/, '')
+                .replace(/\n\n+/g, '\n');
+
+            const parent = node.parentNode;
+            const isOrdered = parent && parent.nodeName === 'OL';
+            let prefix = options.bulletListMarker + ' ';
+
+            if (isOrdered) {
+                const start = parent.getAttribute('start');
+                const index = Array.prototype.indexOf.call(parent.children, node);
+                prefix = (start ? Number(start) + index : index + 1) + '. ';
+            }
+
+            // Indent continuation lines
+            if (content.includes('\n')) {
+                content = content.replace(/\n/gm, '\n' + ' '.repeat(prefix.length));
+            }
+
+            return prefix + content + (node.nextSibling ? '\n' : '');
+        },
+    });
+
+    // Custom image rule: omit title when it duplicates alt text
+    turndown.addRule('imageNoRedundantTitle', {
+        filter: 'img',
+        replacement: function (_content: string, node: any) {
+            const alt = (node.getAttribute('alt') || '').replace(/(\n+\s*)+/g, '\n');
+            const src = node.getAttribute('src') || '';
+            if (!src) return '';
+            const title = (node.getAttribute('title') || '').replace(/(\n+\s*)+/g, '\n');
+            // Skip title if it's the same as alt text
+            const titlePart = title && title !== alt ? ` "${title}"` : '';
+            return `![${alt}](${src}${titlePart})`;
+        },
+    });
+
+    // Custom link rule: when <a> wraps only an <img>, produce [![alt](img)](href)
+    // instead of broken [\n\n![alt](img)\n\n](href)
+    turndown.addRule('linkedImage', {
+        filter: function (node: any) {
+            return (
+                node.nodeName === 'A' &&
+                node.getAttribute('href') &&
+                node.querySelector &&
+                node.querySelector('img') &&
+                // Only apply when the link's meaningful content is just the image
+                node.textContent.trim() === ''
+            );
+        },
+        replacement: function (_content: string, node: any) {
+            const href = (node.getAttribute('href') || '').replace(/([()])/g, '\\$1');
+            const img = node.querySelector('img');
+            if (!img) return '';
+            const alt = (img.getAttribute('alt') || '').replace(/(\n+\s*)+/g, '\n');
+            const src = img.getAttribute('src') || '';
+            if (!src) return '';
+            return `[![${alt}](${src})](${href})`;
+        },
+    });
+
     const markdown = turndown.turndown(result.content || '');
 
     return {
@@ -814,11 +902,11 @@ async function fetchAndParse(targetUrl: string): Promise<ConvertResult> {
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
-export async function convertToMarkdown(targetUrl: string): Promise<ConvertResult> {
+export async function convertToMarkdown(targetUrl: string, cookies?: string): Promise<ConvertResult> {
     if (isXUrl(targetUrl)) {
         return fetchTweetData(targetUrl);
     }
-    return fetchAndParse(targetUrl);
+    return fetchAndParse(targetUrl, cookies);
 }
 
 export function formatResponse(result: ConvertResult, targetUrl?: string): string {

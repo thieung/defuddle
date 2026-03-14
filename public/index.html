@@ -387,6 +387,103 @@
       color: var(--text-muted);
     }
 
+    /* ─── Advanced Options ────────────────────────────────────── */
+    .advanced-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      padding: 6px 14px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: var(--font-ui);
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.2s;
+      border-radius: var(--radius-sm);
+    }
+
+    .advanced-toggle:hover {
+      color: var(--text-secondary);
+    }
+
+    .advanced-toggle .chevron {
+      transition: transform 0.25s ease;
+      display: inline-flex;
+    }
+
+    .advanced-toggle.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .advanced-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .advanced-panel.open {
+      max-height: 200px;
+      opacity: 1;
+    }
+
+    .advanced-inner {
+      padding: 12px 0 0;
+    }
+
+    .cookie-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .cookie-label svg {
+      opacity: 0.6;
+    }
+
+    .cookie-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      line-height: 1.5;
+    }
+
+    .cookie-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .cookie-input:focus {
+      border-color: rgba(148, 163, 184, 0.35);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .cookie-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+      margin-top: 6px;
+    }
+
     /* ─── Stats ───────────────────────────────────────────────── */
     .stats {
       display: flex;
@@ -1195,6 +1292,37 @@
         </div>
       </div>
 
+      <!-- Advanced Options -->
+      <div style="text-align: center;">
+        <button class="advanced-toggle" id="advancedToggle" type="button">
+          <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          Advanced Options
+        </button>
+      </div>
+      <div class="advanced-panel" id="advancedPanel">
+        <div class="advanced-inner">
+          <label class="cookie-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5" />
+              <path d="M8.5 8.5v.01" />
+              <path d="M16 15.5v.01" />
+              <path d="M12 12v.01" />
+              <path d="M11 17v.01" />
+              <path d="M7 14v.01" />
+            </svg>
+            Cookies (for login-required pages)
+          </label>
+          <textarea class="cookie-input" id="cookieInput" rows="2"
+            placeholder="sid=abc123; session_token=xyz... (paste from browser DevTools)"></textarea>
+          <div class="cookie-hint">Paste session cookies to extract content from pages that require login. Cookies are
+            not stored.</div>
+        </div>
+      </div>
+
       <!-- Shortcut -->
       <div class="shortcut-hint">
         <div class="shortcut-code">
@@ -1409,6 +1537,15 @@
     const apiCodeBlock = document.getElementById('apiCodeBlock');
 
     let currentMarkdown = '';
+    const advancedToggle = document.getElementById('advancedToggle');
+    const advancedPanel = document.getElementById('advancedPanel');
+    const cookieInput = document.getElementById('cookieInput');
+
+    // ─── Advanced Toggle ────────────────────────────────────────
+    advancedToggle.addEventListener('click', () => {
+      advancedToggle.classList.toggle('open');
+      advancedPanel.classList.toggle('open');
+    });
 
     // ─── Convert ────────────────────────────────────────────────
     async function convert() {
@@ -1427,10 +1564,13 @@
       convertBtn.classList.add('loading');
 
       try {
+        const cookies = cookieInput.value.trim();
+        const payload = { url: targetUrl, ...(cookies ? { cookies } : {}) };
+
         const response = await fetch(`/api/convert`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: targetUrl })
+          body: JSON.stringify(payload)
         });
 
         const data = await response.json();
@@ -1515,8 +1655,14 @@ curl https://defuddle.thieunv.workers.dev/example.com
 curl -H "Accept: application/json" \\
      https://defuddle.thieunv.workers.dev/example.com
 
-# Convert an X/Twitter post
-curl https://defuddle.thieunv.workers.dev/x.com/user/status/123`,
+# With cookies (for login-required pages)
+curl -H "X-Custom-Cookie: sid=abc123; token=xyz" \\
+     https://defuddle.thieunv.workers.dev/example.com
+
+# POST with cookies
+curl -X POST https://defuddle.thieunv.workers.dev/api/convert \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://example.com","cookies":"sid=abc123"}'`,
 
       js: `// Fetch as Markdown
 const response = await fetch(
@@ -1524,10 +1670,17 @@ const response = await fetch(
 );
 const markdown = await response.text();
 
-// Fetch as JSON
-const json = await fetch(
-  'https://defuddle.thieunv.workers.dev/example.com',
-  { headers: { Accept: 'application/json' } }
+// With cookies (for login-required pages)
+const res = await fetch(
+  'https://defuddle.thieunv.workers.dev/api/convert',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: 'https://example.com/private',
+      cookies: 'sid=abc123; token=xyz'
+    })
+  }
 ).then(r => r.json());`,
 
       python: `import requests
@@ -1538,10 +1691,13 @@ response = requests.get(
 )
 markdown = response.text
 
-# Get JSON
-response = requests.get(
-    "https://defuddle.thieunv.workers.dev/example.com",
-    headers={"Accept": "application/json"}
+# With cookies (for login-required pages)
+response = requests.post(
+    "https://defuddle.thieunv.workers.dev/api/convert",
+    json={
+        "url": "https://example.com/private",
+        "cookies": "sid=abc123; token=xyz"
+    }
 )
 data = response.json()`
     };

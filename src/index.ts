@@ -6,7 +6,7 @@ const BLOCKED_HOSTS = ['localhost'];
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept, X-Custom-Cookie',
 };
 
 export default {
@@ -22,8 +22,9 @@ export default {
     // ── /api/convert endpoint (for frontend) ──
     if (path === '/api/convert' && request.method === 'POST') {
       try {
-        const body = await request.json() as { url?: string };
+        const body = await request.json() as { url?: string; cookies?: string };
         const targetUrl = body?.url?.trim();
+        const cookies = body?.cookies?.trim() || undefined;
 
         if (!targetUrl) {
           return jsonError('Missing "url" field in request body.', 400);
@@ -40,7 +41,7 @@ export default {
           return jsonError('Cannot convert this URL.', 400);
         }
 
-        const result = await convertToMarkdown(targetUrl);
+        const result = await convertToMarkdown(targetUrl, cookies);
         return new Response(JSON.stringify(result, null, 2), {
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
@@ -98,7 +99,8 @@ export default {
     }
 
     try {
-      const result = await convertToMarkdown(targetUrl);
+      const cookies = request.headers.get('X-Custom-Cookie') || undefined;
+      const result = await convertToMarkdown(targetUrl, cookies);
 
       // Check Accept header for JSON output
       const accept = request.headers.get('Accept') || '';
