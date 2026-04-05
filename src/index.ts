@@ -1,5 +1,6 @@
 import './polyfill';
 import { convertToMarkdown, formatResponse } from './convert';
+import type { ConvertOptions } from './convert';
 
 const BLOCKED_HOSTS = ['localhost'];
 
@@ -14,17 +15,21 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
     }
 
-    // ── /api/convert endpoint (for frontend) ──
+    // ── POST /api/convert ──
     if (path === '/api/convert' && request.method === 'POST') {
       try {
-        const body = await request.json() as { url?: string; cookies?: string };
+        const body = await request.json() as {
+          url?: string;
+          cookies?: string;
+          contentSelector?: string;
+          language?: string;
+          includeReplies?: boolean;
+        };
         const targetUrl = body?.url?.trim();
-        const cookies = body?.cookies?.trim() || undefined;
 
         if (!targetUrl) {
           return jsonError('Missing "url" field in request body.', 400);
@@ -41,7 +46,14 @@ export default {
           return jsonError('Cannot convert this URL.', 400);
         }
 
-        const result = await convertToMarkdown(targetUrl, cookies);
+        const options: ConvertOptions = {
+          cookies: body.cookies?.trim() || undefined,
+          contentSelector: body.contentSelector?.trim() || undefined,
+          language: body.language?.trim() || undefined,
+          includeReplies: body.includeReplies,
+        };
+
+        const result = await convertToMarkdown(targetUrl, options);
         return new Response(JSON.stringify(result, null, 2), {
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
@@ -55,37 +67,41 @@ export default {
       }
     }
 
-    // ── Static assets will handle / and other static files ──
-    // Only process paths that look like URLs to convert
+    // ── Static assets ──
     if (path === '/' || path === '') {
-      // Let static assets handle this (fallthrough)
       return new Response(null, { status: 404 });
     }
-
-    // favicon
     if (path === '/favicon.ico') {
       return new Response(null, { status: 204 });
     }
 
-    // ── URL conversion endpoint (GET /{url}) ──
+    // ── GET /{url} ──
     let targetUrl = decodeURIComponent(path.slice(1));
 
-    // Skip paths that are clearly static assets
     if (targetUrl.endsWith('.js') || targetUrl.endsWith('.css') || targetUrl.endsWith('.png') || targetUrl.endsWith('.svg') || targetUrl.endsWith('.ico')) {
       return new Response(null, { status: 404 });
     }
 
-    // Append query string if present
-    if (url.search) {
-      targetUrl += url.search;
+    // Append query string if present (but extract our custom params first)
+    const contentSelector = url.searchParams.get('contentSelector') || undefined;
+    const language = url.searchParams.get('language') || undefined;
+    const includeRepliesParam = url.searchParams.get('includeReplies');
+    const includeReplies = includeRepliesParam !== null ? includeRepliesParam !== 'false' : undefined;
+
+    // Remove our custom params from the query string before appending to target URL
+    const forwardParams = new URLSearchParams(url.searchParams);
+    forwardParams.delete('contentSelector');
+    forwardParams.delete('language');
+    forwardParams.delete('includeReplies');
+    const forwardSearch = forwardParams.toString();
+    if (forwardSearch) {
+      targetUrl += '?' + forwardSearch;
     }
 
-    // Prepend https:// if no protocol
     if (!targetUrl.match(/^https?:\/\//)) {
       targetUrl = 'https://' + targetUrl;
     }
 
-    // Validate URL
     let parsedTarget: URL;
     try {
       parsedTarget = new URL(targetUrl);
@@ -93,16 +109,20 @@ export default {
       return errorResponse('Invalid URL. Please provide a valid web address.', 400);
     }
 
-    // Block self-referential requests
     if (BLOCKED_HOSTS.some(host => parsedTarget.hostname.includes(host))) {
       return errorResponse('Cannot convert this URL.', 400);
     }
 
     try {
-      const cookies = request.headers.get('X-Custom-Cookie') || undefined;
-      const result = await convertToMarkdown(targetUrl, cookies);
+      const options: ConvertOptions = {
+        cookies: request.headers.get('X-Custom-Cookie') || undefined,
+        contentSelector,
+        language,
+        includeReplies,
+      };
 
-      // Check Accept header for JSON output
+      const result = await convertToMarkdown(targetUrl, options);
+
       const accept = request.headers.get('Accept') || '';
       if (accept.includes('application/json')) {
         return new Response(JSON.stringify(result, null, 2), {
@@ -114,8 +134,7 @@ export default {
         });
       }
 
-      // Default: return markdown
-      const markdown = formatResponse(result, targetUrl);
+      const markdown = formatResponse(result);
 
       return new Response(markdown, {
         headers: {
