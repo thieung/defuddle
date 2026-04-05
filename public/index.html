@@ -428,7 +428,7 @@
     }
 
     .advanced-panel.open {
-      max-height: 200px;
+      max-height: 450px;
       opacity: 1;
     }
 
@@ -1320,6 +1320,7 @@
             placeholder="sid=abc123; session_token=xyz... (paste from browser DevTools)"></textarea>
           <div class="cookie-hint">Paste session cookies to extract content from pages that require login. Cookies are
             not stored.</div>
+
         </div>
       </div>
 
@@ -1565,7 +1566,10 @@
 
       try {
         const cookies = cookieInput.value.trim();
-        const payload = { url: targetUrl, ...(cookies ? { cookies } : {}) };
+        const payload = {
+          url: targetUrl,
+          ...(cookies ? { cookies } : {}),
+        };
 
         const response = await fetch(`/api/convert`, {
           method: 'POST',
@@ -1585,7 +1589,7 @@
 
         // Populate header
         resultTitle.textContent = data.title || 'Untitled';
-        resultDomain.textContent = domain;
+        resultDomain.textContent = domain + (data.language ? ` · ${data.language}` : '');
         resultWords.textContent = `${wordCount.toLocaleString()} words`;
 
         // Favicon
