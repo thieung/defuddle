@@ -246,11 +246,50 @@
     }
 
     .hero-subtitle {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       color: var(--text-secondary);
-      max-width: 560px;
-      margin: 0 auto 48px;
+      max-width: 580px;
+      margin: 0 auto 20px;
       line-height: 1.7;
+    }
+
+    /* ─── Hero Platform Pills ─────────────────────────────────── */
+    .hero-platforms {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 44px;
+    }
+
+    .hero-platform-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-glass);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      transition: all 0.25s;
+      white-space: nowrap;
+    }
+
+    .hero-platform-pill:hover {
+      border-color: var(--border-glass-hover);
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+    }
+
+    .hero-platform-pill svg {
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    .hero-platform-pill:hover svg {
+      opacity: 1;
     }
 
     /* ─── Converter Card ──────────────────────────────────────── */
@@ -259,16 +298,17 @@
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-xl);
       padding: 6px;
       max-width: 720px;
       margin: 0 auto;
-      transition: all 0.3s;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
     }
 
     .converter-card:focus-within {
-      border-color: rgba(255, 255, 255, 0.4);
-      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(6, 182, 212, 0.35);
+      box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(6, 182, 212, 0.15), 0 0 60px rgba(6, 182, 212, 0.06);
     }
 
     .converter-inner {
@@ -294,12 +334,11 @@
     }
 
     .convert-btn {
-      padding: 14px 32px;
+      padding: 14px 28px;
       background: var(--text-primary);
       border: 1px solid var(--text-primary);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
       color: #020617;
-      /* Very deep slate for high contrast */
       font-family: var(--font-ui);
       font-weight: 600;
       font-size: 0.95rem;
@@ -314,7 +353,7 @@
     .convert-btn:hover {
       transform: translateY(-2px);
       background: #ffffff;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.15);
     }
 
     .convert-btn:active {
@@ -357,6 +396,39 @@
       to {
         transform: rotate(360deg);
       }
+    }
+
+    /* ─── Keyboard Shortcut Hint ──────────────────────────────── */
+    .kbd-hint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .kbd-hint-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px 7px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      line-height: 1.6;
     }
 
     /* ─── Shortcut Hint ───────────────────────────────────────── */
@@ -631,10 +703,11 @@
     .result-tabs {
       display: flex;
       gap: 0;
+      position: relative;
     }
 
     .tab-btn {
-      padding: 10px 16px;
+      padding: 10px 20px;
       border: none;
       background: none;
       color: var(--text-muted);
@@ -642,7 +715,7 @@
       font-weight: 500;
       font-family: var(--font-ui);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: color 0.2s;
       border-bottom: 2px solid transparent;
       position: relative;
     }
@@ -652,8 +725,8 @@
     }
 
     .tab-btn.active {
-      color: var(--color-indigo);
-      border-bottom-color: var(--color-indigo);
+      color: var(--color-cyan);
+      border-bottom-color: var(--color-cyan);
     }
 
     .result-actions {
@@ -694,6 +767,7 @@
       border-top: none;
       border-radius: 0 0 var(--radius-lg) var(--radius-lg);
       overflow: hidden;
+      position: relative;
     }
 
     .result-content {
@@ -833,7 +907,7 @@
 
     /* ─── Error ────────────────────────────────────────────────── */
     .error-box {
-      background: rgba(239, 68, 68, 0.08);
+      background: rgba(239, 68, 68, 0.06);
       border: 1px solid rgba(239, 68, 68, 0.2);
       border-radius: var(--radius-md);
       padding: 16px 20px;
@@ -841,11 +915,30 @@
       font-size: 0.9rem;
       margin-top: 16px;
       display: none;
+      align-items: flex-start;
+      gap: 12px;
     }
 
     .error-box.visible {
-      display: block;
+      display: flex;
       animation: slideUp 0.3s ease-out;
+    }
+
+    .error-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .error-message {
+      flex: 1;
+      line-height: 1.5;
     }
 
     /* ─── Divider ──────────────────────────────────────────────── */
@@ -916,26 +1009,27 @@
       border: 1px solid var(--border-glass);
       border-radius: var(--radius-lg);
       padding: 32px 28px;
-      transition: all 0.3s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .feature-card:hover {
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
     }
 
     .feature-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-sm);
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 18px;
       margin-bottom: 20px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-glass);
-      color: var(--text-primary);
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.15);
+      color: var(--color-cyan);
     }
 
     .feature-card h3 {
@@ -949,6 +1043,69 @@
       font-size: 0.9rem;
       color: var(--text-secondary);
       line-height: 1.6;
+    }
+
+    /* ─── Supported Platforms ─────────────────────────────────── */
+    .platforms {
+      padding: 0 0 40px;
+    }
+
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .platform-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 28px 16px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: default;
+    }
+
+    .platform-card:hover {
+      border-color: var(--border-glass-hover);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .platform-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+      transition: all 0.3s;
+    }
+
+    .platform-card:hover .platform-icon {
+      color: var(--text-primary);
+      border-color: var(--border-glass-hover);
+    }
+
+    .platform-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .platform-card:hover .platform-name {
+      color: var(--text-secondary);
     }
 
     /* ─── How It Works ────────────────────────────────────────── */
@@ -1039,7 +1196,7 @@
 
     .api-tab.active {
       color: var(--text-primary);
-      border-bottom-color: var(--color-indigo);
+      border-bottom-color: var(--color-cyan);
     }
 
     .api-tab:hover {
@@ -1154,6 +1311,19 @@
         grid-template-columns: 1fr;
       }
 
+      .platform-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .platform-card {
+        padding: 20px 12px;
+      }
+
+      .platform-name {
+        font-size: 0.72rem;
+      }
+
       .steps {
         grid-template-columns: 1fr;
         gap: 32px;
@@ -1193,6 +1363,14 @@
         gap: 8px;
         align-items: flex-start;
       }
+
+      .result-badges {
+        display: none;
+      }
+
+      .kbd-hint {
+        gap: 10px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1203,6 +1381,19 @@
       .stats {
         flex-direction: column;
         align-items: center;
+      }
+
+      .platform-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .hero-platforms {
+        gap: 6px;
+      }
+
+      .hero-platform-pill {
+        font-size: 0.68rem;
+        padding: 3px 10px;
       }
     }
 
@@ -1276,9 +1467,40 @@
       </h1>
 
       <p class="hero-subtitle">
-        Paste any URL and get clean, structured Markdown instantly. Web pages, X/Twitter posts, articles - we extract
-        the content that matters.
+        Turn any URL into clean, structured Markdown in seconds. Strip the noise, keep the content -- ready for LLMs, docs, or anything else.
       </p>
+
+      <!-- Hero Platform Pills -->
+      <div class="hero-platforms">
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          Web Pages
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          X / Twitter
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Facebook
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812v2.836h14.58v-2.836H1.46zm0 5.406v2.836h18.58v-2.836H1.46z"/></svg>
+          Substack
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          YouTube
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.884-7.004 4.884-3.874 0-7.004-2.19-7.004-4.884 0-.18.015-.36.043-.52A1.755 1.755 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+          Reddit
+        </span>
+        <span class="hero-platform-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </span>
+      </div>
 
       <!-- Converter -->
       <div class="converter-card" id="converter">
@@ -1290,6 +1512,16 @@
             <span class="spinner"></span>
           </button>
         </div>
+      </div>
+
+      <!-- Keyboard shortcut hint -->
+      <div class="kbd-hint">
+        <span class="kbd-hint-item">
+          <kbd id="kbdMod">&#8984; Enter</kbd> to convert
+        </span>
+        <span class="kbd-hint-item">
+          <kbd>Tab</kbd> to focus
+        </span>
       </div>
 
       <!-- Advanced Options -->
@@ -1400,7 +1632,14 @@
       </div>
 
       <!-- Error -->
-      <div class="error-box" id="errorBox"></div>
+      <div class="error-box" id="errorBox">
+        <div class="error-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </div>
+        <span class="error-message" id="errorMessage"></span>
+      </div>
     </div>
   </section>
 
@@ -1445,6 +1684,77 @@
             </svg></div>
           <h3>API-First</h3>
           <p>Simple REST API. Append any URL to the worker path or use the JSON endpoint for programmatic access.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Supported Platforms -->
+  <section class="platforms reveal" id="platforms">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Supported Platforms</div>
+        <h2 class="section-title">Works with your favorite sites</h2>
+      </div>
+
+      <div class="platform-grid">
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+            </svg>
+          </div>
+          <span class="platform-name">Any Web Page</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </div>
+          <span class="platform-name">X / Twitter</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+          </div>
+          <span class="platform-name">Facebook</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812v2.836h14.58v-2.836H1.46zm0 5.406v2.836h18.58v-2.836H1.46z"/>
+            </svg>
+          </div>
+          <span class="platform-name">Substack</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+          </div>
+          <span class="platform-name">YouTube</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.884-7.004 4.884-3.874 0-7.004-2.19-7.004-4.884 0-.18.015-.36.043-.52A1.755 1.755 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+            </svg>
+          </div>
+          <span class="platform-name">Reddit</span>
+        </div>
+        <div class="platform-card">
+          <div class="platform-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </div>
+          <span class="platform-name">GitHub</span>
         </div>
       </div>
     </div>
@@ -1509,6 +1819,7 @@
     <div class="container">
       <div class="footer-links">
         <a href="#features">Features</a>
+        <a href="#platforms">Platforms</a>
         <a href="#api">API</a>
         <a href="https://github.com/thieung/defuddle-worker" target="_blank">GitHub</a>
       </div>
@@ -1541,6 +1852,11 @@
     const advancedToggle = document.getElementById('advancedToggle');
     const advancedPanel = document.getElementById('advancedPanel');
     const cookieInput = document.getElementById('cookieInput');
+
+    // ─── Keyboard shortcut label (Cmd vs Ctrl) ─────────────────
+    if (!/Mac|iPod|iPhone|iPad/.test(navigator.platform)) {
+      document.getElementById('kbdMod').innerHTML = 'Ctrl Enter';
+    }
 
     // ─── Advanced Toggle ────────────────────────────────────────
     advancedToggle.addEventListener('click', () => {
@@ -1583,7 +1899,22 @@
           throw new Error(data.error || `Error: ${response.status}`);
         }
 
-        currentMarkdown = data.content || '';
+        // Build frontmatter + content like GET endpoint
+        const fm = ['---'];
+        if (data.title) fm.push(`title: "${data.title.replace(/"/g, '\\"')}"`);
+        if (data.author) fm.push(`author: "${data.author.replace(/"/g, '\\"')}"`);
+        if (data.published) fm.push(`published: ${data.published}`);
+        fm.push(`source: "${data.source}"`);
+        if (data.domain) fm.push(`domain: "${data.domain}"`);
+        if (data.description) fm.push(`description: "${data.description.replace(/"/g, '\\"')}"`);
+        if (data.wordCount) fm.push(`word_count: ${data.wordCount}`);
+        if (data.language) fm.push(`language: "${data.language}"`);
+        if (data.likes != null) fm.push(`likes: ${data.likes}`);
+        if (data.retweets != null) fm.push(`retweets: ${data.retweets}`);
+        if (data.replies != null) fm.push(`replies: ${data.replies}`);
+        if (data.views != null) fm.push(`views: ${data.views}`);
+        fm.push('---');
+        currentMarkdown = fm.join('\n') + '\n\n' + (data.content || '');
         const wordCount = data.wordCount || 0;
         const domain = data.domain || '';
 
@@ -1612,7 +1943,7 @@
         // Scroll to result
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (err) {
-        errorBox.textContent = err.message;
+        document.getElementById('errorMessage').textContent = err.message;
         errorBox.classList.add('visible');
       } finally {
         convertBtn.classList.remove('loading');
@@ -1730,7 +2061,10 @@ data = response.json()`
 
     // ─── Event Listeners ────────────────────────────────────────
     convertBtn.addEventListener('click', convert);
-    urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') convert(); });
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) convert();
+      else if (e.key === 'Enter') convert();
+    });
     copyBtn.addEventListener('click', () => copyToClipboard(currentMarkdown, copyBtn));
     rawBtn.addEventListener('click', showRaw);
     previewBtn.addEventListener('click', showPreview);
