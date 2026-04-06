@@ -2,6 +2,7 @@
 
 import type { ConvertResult, ConvertOptions } from './convert-types';
 import { isXUrl, fetchTweetData } from './x-twitter-fetcher';
+import { isFacebookUrl, fetchFacebookPost } from './facebook-fetcher';
 import { fetchAndParse } from './web-page-extractor';
 
 export type { ConvertResult, ConvertOptions } from './convert-types';
@@ -9,6 +10,9 @@ export type { ConvertResult, ConvertOptions } from './convert-types';
 export async function convertToMarkdown(targetUrl: string, options?: ConvertOptions): Promise<ConvertResult> {
     if (isXUrl(targetUrl)) {
         return fetchTweetData(targetUrl);
+    }
+    if (isFacebookUrl(targetUrl)) {
+        return fetchFacebookPost(targetUrl);
     }
     return fetchAndParse(targetUrl, options);
 }
