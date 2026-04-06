@@ -18,6 +18,18 @@ https://defuddle.thieunv.workers.dev/x.com/thieunguyen_it/status/202146166031004
 https://defuddle.thieunv.workers.dev/x.com/trq212/status/2024574133011673516
 ```
 
+## Supported Platforms
+
+| Platform | Method | Details |
+|----------|--------|---------|
+| **Any web page** | [Defuddle](https://github.com/kepano/defuddle) + [Turndown](https://github.com/mixmark-io/turndown) | Smart content extraction, strips ads/nav/footers |
+| **X / Twitter** | [FxTwitter API](https://github.com/FxEmbed/FxEmbed) | Posts, articles, media, polls, quotes, threads |
+| **Facebook** | Custom extractor | Public posts and content |
+| **Substack** | Defuddle built-in | Newsletter articles (new in Defuddle 0.15) |
+| **YouTube** | Defuddle built-in | Video metadata, transcripts |
+| **Reddit** | Defuddle built-in | Posts and comments |
+| **GitHub** | Defuddle built-in | Issues, READMEs, discussions |
+
 ## Features
 
 - **Any web page** → Markdown via Defuddle + Turndown
@@ -27,9 +39,10 @@ https://defuddle.thieunv.workers.dev/x.com/trq212/status/2024574133011673516
   - X Articles (long-form DraftJS content with inline media)
   - Quote tweets with media
   - Polls with visual progress bars
-  - Engagement stats (❤️ likes, 🔁 retweets, 💬 replies, 👁 views)
+  - Engagement stats (likes, retweets, replies, views)
   - Community notes, replying-to context, broadcasts
   - External media (YouTube embeds, etc.)
+- **Facebook posts** → Markdown with custom extractor
 - JSON and Markdown output formats
 - CORS support
 
@@ -136,9 +149,17 @@ Key settings:
 
 ```
 src/
-├── index.ts        # Worker entry point, request routing
-├── convert.ts      # Core extraction logic (web pages + X/Twitter)
-└── polyfill.ts     # Workers runtime polyfills for DOM APIs
+├── index.ts                        # Worker entry point, request routing
+├── convert.ts                      # Orchestrator: routes URLs to extractors
+├── convert-types.ts                # Shared types (ConvertResult, ConvertOptions)
+├── web-page-extractor.ts           # Generic web page extraction (Defuddle + Turndown)
+├── x-twitter-fetcher.ts            # X/Twitter post extraction via FxTwitter API
+├── x-twitter-types.ts              # X/Twitter type definitions
+├── x-twitter-media-renderer.ts     # X/Twitter media to markdown
+├── x-twitter-text-processor.ts     # X/Twitter text processing utilities
+├── draftjs-to-markdown-converter.ts # DraftJS → Markdown for X Articles
+├── facebook-fetcher.ts             # Facebook post extraction
+└── polyfill.ts                     # Workers runtime polyfills for DOM APIs
 ```
 
 ## API Reference
