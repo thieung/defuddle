@@ -17,7 +17,19 @@ function createTurndownService(): TurndownService {
     return turndown;
 }
 
+/** Normalize URLs that require JS-based redirects (e.g. open.substack.com → author.substack.com) */
+function normalizeUrl(url: string): string {
+    // open.substack.com/pub/{author}/p/{slug} → {author}.substack.com/p/{slug}
+    const substackMatch = url.match(/^(https?:\/\/)open\.substack\.com\/pub\/([^/]+)\/p\/([^?#]+)/);
+    if (substackMatch) {
+        return `${substackMatch[1]}${substackMatch[2]}.substack.com/p/${substackMatch[3]}`;
+    }
+    return url;
+}
+
 export async function fetchAndParse(targetUrl: string, options?: ConvertOptions): Promise<ConvertResult> {
+    targetUrl = normalizeUrl(targetUrl);
+
     const headers: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
